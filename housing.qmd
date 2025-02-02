@@ -2,10 +2,12 @@
 title: "housing"
 ---
 
-## Quarto
+## Housing
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+### The Irish Housing Crisis - Quick Analysis with  CSO Data
 
 ```{r}
-1 + 1
+library(csodata)
+library(dplyr)
+library(ggplot2)
 ```
