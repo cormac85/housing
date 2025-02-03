@@ -1,13 +1,122 @@
 ---
 title: "housing"
+format: pdf
+execute:
+  echo: false
+  warning: false
 ---
 
 ## Housing
 
-### The Irish Housing Crisis - Quick Analysis with  CSO Data
+### The Irish Housing Crisis - Quick Analysis with CSO Data
 
 ```{r}
 library(csodata)
 library(dplyr)
 library(ggplot2)
+library(cowplot)
+source("theme.R")
+```
+
+```{r, cache=TRUE}
+new_dwelling_completions_by_type_and_quarter = csodata::cso_get_data(
+  "NDQ01", use_factors = FALSE, pivot_format = "tidy"
+)
+```
+
+```{r}
+cso_rename_func <- function(col_name) {
+  new_name <- stringr::str_replace_all(col_name, "\\.", "_")
+  new_name <- tolower(new_name)
+  new_name <- stringr::str_replace_all(new_name, " ", "_")
+  new_name
+}
+
+new_dwelling_completions_by_type_and_quarter = rename_with(
+  new_dwelling_completions_by_type_and_quarter, .fn = cso_rename_func
+)
+```
+
+```{r}
+new_dwelling_completions_by_type_and_quarter <- 
+  new_dwelling_completions_by_type_and_quarter |> 
+  mutate(quarter_date = lubridate::yq(quarter),
+         year = stringr::str_remove(quarter, "Q.*"))
+
+new_dwelling_completions_by_type_and_quarter
+```
+
+#### Definitions
+
+-   [**Single**: If a single domestic dwelling or farm premises is to be connected to the ESB Network, the dwelling is defined as 'single'](https://www.cso.ie/en/releasesandpublications/ep/p-ndc/newdwellingcompletionsq22024/backgroundnotes/)
+
+-   [**Scheme**: If a new multi-unit development with two or more houses is to be connected to the ESB Network, each dwelling is defined as a 'scheme'](https://www.cso.ie/en/releasesandpublications/ep/p-ndc/newdwellingcompletionsq22024/backgroundnotes/)
+
+-   [**Apartment**: If a new multi-unit development with two or more apartments is to be connected to the ESB Network, each dwelling is defined as 'apartment'](https://www.cso.ie/en/releasesandpublications/ep/p-ndc/newdwellingcompletionsq22024/backgroundnotes/)
+
+```{r}
+NEW_DWELLING_REQUIRED_ESTIMATE <- 50000
+
+new_dwelling_completions_by_type_and_year <-
+  new_dwelling_completions_by_type_and_quarter |> 
+  group_by(year, type_of_house) |> 
+  summarise(new_dwelling_completions = sum(new_dwelling_completions)) 
+
+house_type_stacked_p = new_dwelling_completions_by_type_and_year |> 
+  filter(type_of_house != "All house types") |> 
+  ggplot(
+    aes(
+      year, 
+      new_dwelling_completions, 
+      group = type_of_house, 
+      fill = type_of_house
+    )
+  ) + 
+  geom_col() +
+  geom_hline(
+    yintercept = NEW_DWELLING_REQUIRED_ESTIMATE, 
+    colour = ukraine_palette$ukraine_blue,
+    linewidth = 0.7,
+    linetype = 2
+  ) +
+  annotate(
+    "text",
+    x = "2021",
+    y = NEW_DWELLING_REQUIRED_ESTIMATE - 1500,
+    label = "Estimate of number of dwellings required per year",
+    colour = ukraine_palette$ukraine_blue_dark
+  ) +
+  ukraine_plot_theme() +
+  scale_fill_manual(values = c(
+    ukraine_palette$ukraine_blue,
+    ukraine_palette$ukraine_yellow_darkened,
+    ukraine_palette$ukraine_blue_dark
+    )
+  ) +
+  labs(title = "Ireland - Dwellings Built per Year",
+       x = "Year",
+       y = "# Dwellings Completed")
+
+house_type_filled_p <- 
+  new_dwelling_completions_by_type_and_year |> 
+  filter(type_of_house != "All house types") |> 
+  ggplot(
+    aes(
+      year, 
+      new_dwelling_completions, 
+      group = type_of_house, 
+      fill = type_of_house
+    )
+  ) + 
+  geom_col(position= "fill") +
+  ukraine_plot_theme() +
+  scale_fill_manual(values = c(
+    ukraine_palette$ukraine_blue,
+    ukraine_palette$ukraine_yellow_darkened,
+    ukraine_palette$ukraine_blue_dark
+    )
+  )
+
+house_type_stacked_p 
+house_type_filled_p
 ```
